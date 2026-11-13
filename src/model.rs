@@ -16,19 +16,6 @@ pub enum AgentKind {
 }
 
 impl AgentKind {
-    /// Returns all built-in supported agents in display order.
-    #[must_use]
-    pub const fn all() -> &'static [Self] {
-        &[
-            Self::Antigravity,
-            Self::ClaudeCode,
-            Self::Cursor,
-            Self::Codex,
-            Self::OpenCode,
-            Self::Copilot,
-        ]
-    }
-
     /// Human-readable display name for menus.
     #[must_use]
     pub const fn display_name(self) -> &'static str {
@@ -45,19 +32,6 @@ impl AgentKind {
     /// Short identifier used in compact labels and IDs.
     #[must_use]
     pub const fn slug(self) -> &'static str {
-        match self {
-            Self::Antigravity => "agy",
-            Self::ClaudeCode => "claude",
-            Self::Cursor => "cursor",
-            Self::Codex => "codex",
-            Self::OpenCode => "opencode",
-            Self::Copilot => "copilot",
-        }
-    }
-
-    /// Primary CLI binary name.
-    #[must_use]
-    pub const fn cli_binary(self) -> &'static str {
         match self {
             Self::Antigravity => "agy",
             Self::ClaudeCode => "claude",
