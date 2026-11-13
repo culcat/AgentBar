@@ -1,0 +1,104 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchains
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Determine version
+        id: version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          else
+            VER="$(grep '^version = ' Cargo.toml | head -n 1 | cut -d '"' -f2)"
+            echo "version=${VER}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build universal macOS binary
+        run: |
+          cargo build --release --target aarch64-apple-darwin
+          cargo build --release --target x86_64-apple-darwin
+          mkdir -p target/release
+          lipo -create \
+            target/aarch64-apple-darwin/release/agentbar \
+            target/x86_64-apple-darwin/release/agentbar \
+            -output target/release/agentbar
+
+      - name: Package .app and .dmg
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          APP_DIR="dist/AgentBar.app"
+          mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
+          cp target/release/agentbar "$APP_DIR/Contents/MacOS/AgentBar"
+          chmod +x "$APP_DIR/Contents/MacOS/AgentBar"
+
+          cat > "$APP_DIR/Contents/Info.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleDevelopmentRegion</key>
+              <string>en</string>
+              <key>CFBundleExecutable</key>
+              <string>AgentBar</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.culcat.agentbar</string>
+              <key>CFBundleInfoDictionaryVersion</key>
+              <string>6.0</string>
+              <key>CFBundleName</key>
+              <string>AgentBar</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleShortVersionString</key>
+              <string>${VERSION}</string>
+              <key>CFBundleVersion</key>
+              <string>1</string>
+              <key>LSMinimumSystemVersion</key>
+              <string>13.0</string>
+              <key>LSUIElement</key>
+              <true/>
+              <key>NSHighResolutionCapable</key>
+              <true/>
+          </dict>
+          </plist>
+          EOF
+
+          codesign --force --deep --sign - "$APP_DIR"
+
+          STAGING="dist/dmg-staging"
+          mkdir -p "$STAGING"
+          cp -R "$APP_DIR" "$STAGING/AgentBar.app"
+          ln -s /Applications "$STAGING/Applications"
+
+          DMG_PATH="dist/AgentBar-${VERSION}.dmg"
+          hdiutil create -volname "AgentBar" -srcfolder "$STAGING" -ov -format UDZO "$DMG_PATH"
+          rm -rf "$STAGING"
+
+          cd dist
+          shasum -a 256 "AgentBar-${VERSION}.dmg" > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dist/AgentBar-${{ steps.version.outputs.version }}.dmg
+            dist/SHA256SUMS.txt
