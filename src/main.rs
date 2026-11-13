@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+mod launcher;
 mod model;
 mod providers;
 mod scanner;
