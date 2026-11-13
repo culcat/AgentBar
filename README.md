@@ -18,6 +18,13 @@
 
 ## ✨ Preview
 
+<div align="center">
+  <img src="assets/preview.jpg" alt="AgentBar macOS Menu Bar Preview" width="820" />
+</div>
+
+<details>
+<summary>Menu structure (text view)</summary>
+
 ```text
 🤖 2  (macOS Menu Bar)
 ├── AgentBar  ·  2 active  ·  5/6 ready
@@ -41,6 +48,8 @@
 ├── Refresh Now
 └── Quit AgentBar
 ```
+
+</details>
 
 ---
 
